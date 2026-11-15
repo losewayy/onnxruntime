@@ -3110,7 +3110,6 @@ TEST_F(GraphTransformationTests, FuseMatmulBNWithGraphOutputInBetweenNode) {
   ASSERT_STATUS_OK(Model::Load(model_uri, p_model, nullptr, *logger_));
   Graph& graph = p_model->MainGraph();
 
-  // mark the Reshape output as an additional graph output
   std::vector<const NodeArg*> graph_outputs = graph.GetOutputs();
   const NodeArg* reshape_output = nullptr;
   for (const Node& node : graph.Nodes()) {
@@ -3135,11 +3134,10 @@ TEST_F(GraphTransformationTests, FuseMatmulBNWithGraphOutputInBetweenNode) {
   ASSERT_EQ(op_to_count["Reshape"], 1);
   ASSERT_EQ(op_to_count["Gemm"], 0);
 
-  // the reported failure mode orphaned the graph output's NodeArg; check it
-  // still has a producing node (Graph::Resolve does not verify this for
-  // manually-set outputs, so assert it directly)
-  ASSERT_NE(graph.GetProducerNode(reshape_output->Name()), nullptr);
-  ASSERT_EQ(graph.GetProducerNode(reshape_output->Name())->OpType(), "Reshape");
+  // Resolve does not check producer presence for manually-set outputs.
+  const Node* producer = graph.GetProducerNode(reshape_output->Name());
+  ASSERT_NE(producer, nullptr);
+  ASSERT_EQ(producer->OpType(), "Reshape");
   ASSERT_STATUS_OK(graph.Resolve());
 }
 
